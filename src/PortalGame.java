@@ -16,7 +16,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-
 /*
  * IDEAS/TODO
  * - Left/Right click should determine what type of portal is fired
@@ -56,7 +55,7 @@ public class PortalGame extends Application {
 
 	public void init() throws Exception {
 		
-		player = new Player(WIDTH / 2, HEIGHT / 2, 60, 60, this);
+		player = new Player(WIDTH / 2, HEIGHT / 2, 40, 40, this);
 		player.setColor(Color.AQUA);
 		player.setxVelocity(0);
 		player.setyVelocity(0);
@@ -70,10 +69,10 @@ public class PortalGame extends Application {
 		Rectangle floor = new Rectangle(0, HEIGHT - 50, WIDTH, 50);
 		Rectangle leftWall = new Rectangle(0, 0, 50, HEIGHT);
 		Rectangle rightWall = new Rectangle(WIDTH - 50, 0, 50, HEIGHT);
-		//Rectangle middlePlatform = new Rectangle(WIDTH / 2 - 150, 500, 300, 20);
+		Rectangle middlePlatform = new Rectangle(WIDTH / 2 - 150, 500, 300, 20);
 		Rectangle ceiling = new Rectangle(0, 0, WIDTH, 50);
 		
-		Collections.addAll(platformObjects, floor, leftWall, rightWall, /*middlePlatform,*/ ceiling);
+		Collections.addAll(platformObjects, floor, leftWall, rightWall, middlePlatform, ceiling);
 		root.getChildren().addAll(platformObjects);
 		
 		
@@ -95,6 +94,7 @@ public class PortalGame extends Application {
 				
 			}
 		};
+		
 		animator.start();
 
 		gameStage.setScene(gameScene); // stuff won't show up without this
@@ -213,6 +213,17 @@ public class PortalGame extends Application {
 				} else if (code.equals("S")) {
 					
 					player.setyVelocity(player.getyVelocity() + 2);
+					
+				}
+				
+				if (code.equals("P")) {
+					
+					animator.stop();
+					
+				}
+				if (code.equals("R")) {
+					
+					animator.start();
 					
 				}
 				

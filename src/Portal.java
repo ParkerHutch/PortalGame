@@ -24,9 +24,9 @@ public class Portal {
 	PortalGame gameObject; 
 
 	double horizontalPortalWidth = 150;
-	double verticalPortalWidth = 6;
-	double horizontalPortalHeight = 6;
-	double verticalPortalHeight = 150;
+	double verticalPortalWidth = 10;
+	double horizontalPortalHeight = verticalPortalWidth;
+	double verticalPortalHeight = horizontalPortalWidth;
 
 
 	public Portal() {}
@@ -144,7 +144,7 @@ public class Portal {
 	public void stickToWall(Rectangle rectangle) {
 
 		setVelocity(0);
-		setPlacedOnWall(true);
+		
 
 		double leftVerticalX = rectangle.getX();
 		double rightVerticalX = rectangle.getX() + rectangle.getWidth();
@@ -197,6 +197,8 @@ public class Portal {
 		}
 
 		adjustSize();
+		
+		setPlacedOnWall(true);
 
 	}
 

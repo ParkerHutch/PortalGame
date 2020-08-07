@@ -1,4 +1,7 @@
+import java.awt.GraphicsConfigTemplate;
 import java.util.ArrayList;
+
+import javax.crypto.spec.GCMParameterSpec;
 
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
@@ -17,13 +20,13 @@ public class Player {
 
 	private double xVelocity;
 	private double yVelocity;
-	
+
 	private boolean insidePortal = false;
 
 	private PortalGame gameObject;
 
 	private ArrayList<Portal> portals = new ArrayList<>();
-	
+
 	private ArrayList<Player> instances = new ArrayList<>(); 
 
 	/**
@@ -39,7 +42,7 @@ public class Player {
 		this.width = width;
 		this.height = height;
 		this.gameObject = gameObject;
-		
+
 		instances.add(this);
 	}
 
@@ -49,14 +52,14 @@ public class Player {
 	 * @param gc the GraphicsContext of the canvas to draw the player and portals on
 	 */
 	public void update(GraphicsContext gc) {
-		
+
 		//setxVelocity(getxVelocity() * 0.99);
-		
 		setX(getX() + getxVelocity());
 		setY(getY() + getyVelocity());
-
-		//setyVelocity(getyVelocity() + .1); // Gravity
 		
+
+		setyVelocity(getyVelocity() + .1); // Gravity
+
 		draw(gc);
 
 		for (Portal portal : getPortals()) {
@@ -65,14 +68,15 @@ public class Player {
 			portal.draw(gc);
 
 		}
-		
+
 		resolvePortalCollisions();
 		
+
 		// TODO: should only execute the below line if !isInsidePortal()
 		if (!isInsidePortal()) {
 			checkCollisions(gameObject.getPlatformObjects());
 		}
-		
+
 	}
 
 	/**
@@ -84,39 +88,39 @@ public class Player {
 
 		String portalType;
 		if (clickType.equals("LEFT")) {
-			
+
 			portalType = "A";
-			
+
 		} else {
 
 			portalType = "B";
-			
+
 		}
-		
-		
-		
+
+
+
 		int portalTypeIndex = -1;
 		for (int i = 0; i < getPortals().size(); i++) {
-			
+
 			if (getPortals().get(i).getPortalType().equals(portalType)) {
-				
+
 				portalTypeIndex = i;
-				
+
 			}
-			
+
 		}
-		
+
 		Portal newPortal = new Portal(portalType, getCenterX(), getCenterY(), direction, gameObject);
 		if (portalTypeIndex != -1) {
-			
+
 			getPortals().set(portalTypeIndex, newPortal);
-			
+
 		} else {
-			
+
 			getPortals().add(newPortal);
-			
+
 		}
-		
+
 	}
 
 	/**
@@ -125,22 +129,23 @@ public class Player {
 	 */
 	public void draw(GraphicsContext gc) {
 
-		
+
 		// TODO I should modify the drawing method when the player is inside a portal
 		// ex. only draw the rect up to the portal
-		
+
 		gc.save();
+
 		for (Player clone : instances) {
-			
-			
+
+
 			gc.setFill(clone.getColor());
 			gc.fillRect(clone.getX(), clone.getY(), clone.getWidth(), clone.getHeight());
-			
+
 		}
-		
+
 		gc.restore();
-		
-		
+
+
 	}
 
 	/**
@@ -184,17 +189,17 @@ public class Player {
 	public void setY(double y) {
 		this.y = y;
 	}
-	
+
 	/**
 	 * Sets the top left point of the Player
 	 * @param x the new left x coordinate of the Player
 	 * @param y the new top y coordinate of the Player
 	 */
 	public void setLocation(double x, double y) {
-		
+
 		setX(x);
 		setY(y);
-		
+
 	}
 
 	/**
@@ -254,7 +259,7 @@ public class Player {
 	public void setHeight(double height) {
 		this.height = height;
 	}
-	
+
 	/**
 	 * @return the color
 	 */
@@ -283,6 +288,7 @@ public class Player {
 		this.insidePortal = insidePortal;
 	}
 
+
 	/**
 	 * Returns a rectangle representing the containing boundaries of the tile
 	 * @return a Rectangle2D object which contains the dimensions of the  Player
@@ -290,11 +296,11 @@ public class Player {
 	public Rectangle getProximityBox() {
 		return new Rectangle(getCenterX() - getWidth() * 2, getCenterY() - getHeight() * 2, getWidth() * 4, getHeight() * 4);
 	}
-	
+
 	public Rectangle getRectangle() {
-		
+
 		return new Rectangle(getX(), getY(), getWidth(), getHeight());
-		
+
 	}
 
 	public Rectangle getTopBounds() {
@@ -317,7 +323,7 @@ public class Player {
 		return new Rectangle(getX() + getWidth() / 4, getY() + (7 * getHeight() / 8), getWidth() / 2,
 				(getHeight() / 8) + 0);
 	}
-
+	
 	/**
 	 * Handles collisions between the Player and any of the placed Portals.
 	 * If the Player is inside of a Portal, a "clone" is placed at the 
@@ -327,67 +333,110 @@ public class Player {
 	 * the velocities of the Player are adjusted.
 	 */
 	public void resolvePortalCollisions() {
-		
+
 		if (getPortals().size() == 2 && getPortals().get(0).isPlacedOnWall() && getPortals().get(1).isPlacedOnWall()) {
-			
+
 			Portal enterPortal;
 			Portal exitPortal;
-			
+
 			Portal portal1 = portals.get(0); 
 			Portal portal2 = portals.get(1);
-			
+
 			Bounds portal1Bounds = portal1.getRectangle().getLayoutBounds();
 			Bounds portal2Bounds = portal2.getRectangle().getLayoutBounds();
-			
+
 			boolean insidePortal1 = instances.get(0).getRectangle().intersects(portal1Bounds);
 			boolean insidePortal2 = instances.get(0).getRectangle().intersects(portal2Bounds);
-			
+
 			if (insidePortal1) {
-				
+
 				enterPortal = portal1;
 				exitPortal = portal2;
-				
+
 			} else {
-				
+
 				enterPortal = portal2;
 				exitPortal = portal1;
-				
+
 			}
-			
+
 			if (insidePortal1 || insidePortal2) {
 
 				setInsidePortal(true);
-				
-				bounceInsidePortal(enterPortal);
-				
-				placeClone(enterPortal, exitPortal);
-				
-				
-			} else {
-				
-				// If the Player went completely through a portal and the collision is now over,
-				// set the Player's location to the clone(which was placed during the collision)'s 
-				// location and remove the clone
-				if (getInstances().size() > 1) {
-					
-					Player clone = getInstances().get(1);
-					
-					instances.get(0).setLocation(clone.getX(), clone.getY());
-					
-					instances.get(0).adjustVelocities(enterPortal, exitPortal);
-					
-					instances.remove(1);
-					
-				}
 
-				setInsidePortal(false);
+				bounceInsidePortal(enterPortal);
+
+				placeClone(enterPortal, exitPortal);
+
+
+			} else {
+
+				swapCloneForPlayer(enterPortal, exitPortal);
 
 			}
 
 		}
 
+
 	}
-	
+
+	public void swapCloneForPlayer(Portal enterPortal, Portal exitPortal) {
+
+		// If the Player went completely through a portal and the collision is now over,
+		// set the Player's location to the clone(which was placed during the collision)'s 
+		// location and remove the clone
+		if (getInstances().size() > 1) {
+
+			Player clone = getInstances().get(1);
+
+			getInstances().get(0).setLocation(clone.getX(), clone.getY());
+
+			getInstances().get(0).adjustVelocities(enterPortal, exitPortal);
+
+			getInstances().remove(1);
+
+		}
+
+		setInsidePortal(false);
+
+	}
+
+
+	/**
+	 * Checks if the Player should be able to enter a Portal. The player should be able to enter
+	 * a Portal if it is within the sides of the Portal which run parallel to its opening.
+	 * @param enterPortal the Portal which the Player is entering
+	 * @return true if the Player should be able to enter the Portal, false otherwise
+	 */
+	public boolean shouldEnterPortal(Portal enterPortal) {
+
+		boolean shouldEnterPortal = false;
+
+		boolean isEnteringHorizontalPortal = enterPortal.getOpeningDirection().equals("UP") || enterPortal.getOpeningDirection().equals("DOWN");
+
+		if (isEnteringHorizontalPortal) {
+
+			if (getX() > enterPortal.getLeftX() && getX() + getWidth() < enterPortal.getRightX()) {
+
+				shouldEnterPortal = true;
+
+			}
+
+		} else {
+
+			if (getY() > enterPortal.getTopY() && getY() + getHeight() < enterPortal.getBottomY()) {
+
+				shouldEnterPortal = true;
+
+			}
+
+		}
+
+		return shouldEnterPortal;
+
+	}
+
+
 	/**
 	 * Makes the Player bounce off the sides of the Portal
 	 * Ex. if the player is in an upward-opening Portal, this method
@@ -396,34 +445,40 @@ public class Player {
 	 * @param enterPortal the Portal the Player is entering
 	 */
 	public void bounceInsidePortal(Portal enterPortal) {
-		
+
 		boolean isEnteringHorizontalPortal = enterPortal.getOpeningDirection().equals("UP") || enterPortal.getOpeningDirection().equals("DOWN");
-		
+
 		if (isEnteringHorizontalPortal) {
-			
+
 			if (getX() < enterPortal.getLeftX()) {
-				
+
 				setX(enterPortal.getLeftX());
 				setxVelocity(getxVelocity() * -1);
-				
+
 			} else if (getX() + getWidth() > enterPortal.getRightX()) {
-				
+
 				setX(enterPortal.getRightX() - getWidth());
 				setxVelocity(getxVelocity() * -1);
-				
+
 			}
-			
-			
-			
+
 		} else {
-			
+
 			if (getY() < enterPortal.getTopY()) {
-				// TODO FIXME
+
+				setY(enterPortal.getTopY());
+				setyVelocity(getyVelocity() * -1);
+
+			} else if (getY() + getHeight() > enterPortal.getBottomY()) {
+
+				setY(enterPortal.getBottomY() - getHeight());
+				setyVelocity(getyVelocity() * -1);
+
 			}
-			
-			
+
+
 		}
-		
+
 	}
 
 	/**
@@ -446,102 +501,104 @@ public class Player {
 			getInstances().get(1).setColor(Color.BLUE);
 
 		}
-		
+
 		String enterPortalDirection = enterPortal.getOpeningDirection();
 		String exitPortalDirection = exitPortal.getOpeningDirection();
+
 		boolean isEnteringHorizontalPortal = enterPortalDirection.equals("UP") || enterPortalDirection.equals("DOWN");
 		boolean isExitingHorizontalPortal = exitPortalDirection.equals("UP") || exitPortalDirection.equals("DOWN");
-		
+
 		double distanceIntoEnterPortal = calculateDistanceIntoPortal(enterPortal);
-		
+
 		double cloneX;
 		double cloneY;
-		
+
+		int safetyMargin = 0; // TODO Rename/label
+
 		if (isEnteringHorizontalPortal) {
-			
+
 			double distanceToEnterPortalLeftSide = Math.abs(enterPortal.getLeftX() - getX());
-			
+
 			// If the Player is entering a horizontal portal and exiting through a horizontal portal
 
 			if (isExitingHorizontalPortal) {
-				
+
 				cloneX = exitPortal.getLeftX() + distanceToEnterPortalLeftSide;
-				
+
 				if (exitPortal.getOpeningDirection().equals("UP")) {
-					
-					cloneY = exitPortal.getTopY() - distanceIntoEnterPortal;
-					
+
+					cloneY = exitPortal.getTopY() - distanceIntoEnterPortal - safetyMargin;
+
 				} else {
-					
+
 					// If the Player enters a horizontal portal and exits through a down-opening portal
-					
-					cloneY = exitPortal.getTopY() + distanceIntoEnterPortal - getHeight() + 5;
+
+					cloneY = exitPortal.getBottomY() + distanceIntoEnterPortal + safetyMargin - getHeight();
 
 				}
-				
-				
+
+
 			} else {
 
 				// If the Player is entering a horizontal portal and exiting through a vertical portal
 				cloneY = exitPortal.getTopY() + distanceToEnterPortalLeftSide;
 
 				if (exitPortal.getOpeningDirection().equals("RIGHT")) {
-					
-					cloneX = exitPortal.getRightX() + distanceIntoEnterPortal - getWidth();
-					
+
+					cloneX = exitPortal.getRightX() + distanceIntoEnterPortal - getWidth() + safetyMargin;
+
 				} else {
-					
-					cloneX = exitPortal.getLeftX() - distanceIntoEnterPortal;
-					
+
+					cloneX = exitPortal.getLeftX() - distanceIntoEnterPortal - safetyMargin;
+
 				}
-				
+
 			}
-			
+
 		} else {
-			
+
 			// If the player entered through a vertical portal
 
 			double distanceToEnterPortalTopSide = Math.abs(enterPortal.getTopY() - getY());
 
-			
 			if (isExitingHorizontalPortal) {
 
 				cloneX = exitPortal.getLeftX() + distanceToEnterPortalTopSide;
 
 				if (exitPortal.getOpeningDirection().equals("UP")) {
 
-					cloneY = exitPortal.getTopY() - distanceIntoEnterPortal;
+					cloneY = exitPortal.getTopY() - distanceIntoEnterPortal - safetyMargin;
 
 				} else {
-					
-					cloneY = exitPortal.getTopY() + distanceIntoEnterPortal - getHeight();
+
+					cloneY = exitPortal.getBottomY() + distanceIntoEnterPortal + safetyMargin - getHeight();
 
 				}
 
 			} else {
-				
+
 				// If the Player enters through a vertical portal and exits through a vertical portal
-				
+
 				cloneY = exitPortal.getTopY() + distanceToEnterPortalTopSide;
 
 				if (exitPortal.getOpeningDirection().equals("RIGHT")) {
 
-					cloneX = exitPortal.getRightX() + distanceIntoEnterPortal - getWidth();
+					cloneX = exitPortal.getRightX() + distanceIntoEnterPortal - getWidth() + safetyMargin ;
 
 				} else {
 
-					cloneX = exitPortal.getLeftX() - distanceIntoEnterPortal;
-					
+					cloneX = exitPortal.getLeftX() - distanceIntoEnterPortal - safetyMargin;
+
 				}
 
 			}
-			
+
 		}
-		
+
 		getInstances().get(1).setLocation(cloneX, cloneY);
-		
+
 	}
-	
+
 	/**
 	 * Adjusts the x and y velocities of the Player. The adjustment made
 	 * depends on the opening directions of the Portals through which the 
@@ -550,26 +607,26 @@ public class Player {
 	 * @param exitPortal the Portal which the Player exited
 	 */
 	public void adjustVelocities(Portal enterPortal, Portal exitPortal) {
-		
+
 		String enterPortalDirection = enterPortal.getOpeningDirection();
 		String exitPortalDirection = exitPortal.getOpeningDirection();
 		boolean isEnteringHorizontalPortal = enterPortalDirection.equals("UP") || enterPortalDirection.equals("DOWN");
 		boolean isExitingHorizontalPortal = exitPortalDirection.equals("UP") || exitPortalDirection.equals("DOWN");
-		
+
 		if (enterPortalDirection.equals(exitPortalDirection)) {
-			
+
 			if (isEnteringHorizontalPortal) {
-				
+
 				setyVelocity(getyVelocity() * -1);
-				
+
 			} else {
-				
+
 				setxVelocity(getxVelocity() * -1);
-				
+
 			}
-			
+
 		} else {
-			
+
 			if (isEnteringHorizontalPortal == isExitingHorizontalPortal) {
 
 				// If the player is entering and exiting through Portals of the same
@@ -583,42 +640,46 @@ public class Player {
 
 				// If the Player enters a horizontal Portal and exits through a vertical Portal,
 				// or if the Player enters a vertical Portal and exits a horizontal Portal
-				
+
 				String combination = enterPortalDirection + exitPortalDirection;
-				
+
 				boolean simpleSwap = ( combination.contains("LEFT") && combination.contains("DOWN") ) || 
 						( combination.contains("RIGHT") && combination.contains("UP") );
-				
+
 				double oldXVelocity = getxVelocity();
 				double oldYVelocity = getyVelocity();
-				
+
+
 				if (simpleSwap) {
-					
+
 					setxVelocity(oldYVelocity);
 					setyVelocity(oldXVelocity);
-					
+
 				} else {
-					
+
+					System.out.println(enterPortalDirection);
+
 					if (enterPortalDirection.equals("LEFT") || enterPortalDirection.equals("RIGHT")) {
-						
+
+						System.out.println("Here");
 						setxVelocity(oldYVelocity);
 						setyVelocity(oldXVelocity * -1);
-						
+
 					} else {
-						
+
 						setxVelocity(oldYVelocity * -1);
 						setyVelocity(oldXVelocity);
-						
+
 					}
-					
+
 				}
-				
+
 
 			}
 		}
-		
+
 	}
-	
+
 	/**
 	 * Calculates how far into a Portal the Player has traveled. The distance
 	 * is calculated by getting the absolute difference between the x/y coordinate
@@ -630,44 +691,41 @@ public class Player {
 	 * @return the distance the Player has traveled into the Portal, in pixels
 	 */
 	public double calculateDistanceIntoPortal(Portal portal) {
-		
+
 		double distance = -1;
 		if (portal.getOpeningDirection().equals("LEFT")) {
-			
+
 			// player -> | 
-			double portalLeftX = portal.getCenterX() - portal.getWidth();
+
 			double playerRightX = getX() + getWidth();
-			
-			distance = Math.abs(portalLeftX - playerRightX);
-			
-			
+
+			distance = Math.abs(portal.getLeftX() - playerRightX);
+
+
 		} else if (portal.getOpeningDirection().equals("RIGHT")) {
-			
+
 			// | <- player
 			double playerLeftX = getX();
-			double portalRightX = portal.getCenterX() + portal.getWidth() / 2;
-			
-			distance = Math.abs(playerLeftX - portalRightX);
-			
+
+			distance = Math.abs(playerLeftX - portal.getRightX());
+
 		} else if (portal.getOpeningDirection().equals("UP")) {
-			
+
 			double playerBottomY = getY() + getHeight();
-			double portalTopY = portal.getCenterY() - portal.getHeight() / 2;
-			
-			distance = Math.abs(portalTopY - playerBottomY);
-			
+
+			distance = Math.abs(portal.getTopY() - playerBottomY);
+
 		} else if (portal.getOpeningDirection().equals("DOWN")) {
-			
+
 			double playerTopY = getY();
-			double portalBottomY = portal.getCenterY() + portal.getHeight() / 2;
-			
-			distance = Math.abs(portalBottomY - playerTopY);
+
+			distance = Math.abs(portal.getBottomY() - playerTopY);
 		}
-		
+
 		return distance;
-		
+
 	}
-	
+
 	/**
 	 * Checks for collisions(intersections) between the Player and a
 	 * given ArrayList of Rectangle objects, which represent platforms
@@ -678,31 +736,31 @@ public class Player {
 	 * @param rectangles an ArrayList of Rectangles representing game objects
 	 */
 	public void checkCollisions(ArrayList<Rectangle> rectangles) {
-		
+
 		boolean topCollision;
 		boolean bottomCollision;
 		boolean leftCollision;
 		boolean rightCollision;
-		
+
 		for (Rectangle rectangle : rectangles) {
-			
+
 			// If the rectangle intersects the player somewhere
 			if (getProximityBox().intersects(rectangle.getLayoutBounds())) {
-				
+
 				Bounds otherRectangle = rectangle.getLayoutBounds();
-				
+
 				// Determine what kind of collision is occuring
 				bottomCollision = getBottomBounds().intersects(otherRectangle);
 				topCollision = getTopBounds().intersects(otherRectangle);
 				leftCollision = getLeftBounds().intersects(otherRectangle);
 				rightCollision = getRightBounds().intersects(otherRectangle);
-				
-				
+
+
 				// Respond to the collision
 				if (bottomCollision) {
 
 					resolveBottomCollision(rectangle);
-					
+
 				}
 				if (topCollision) {
 
@@ -712,7 +770,7 @@ public class Player {
 				if (leftCollision) {
 
 					resolveLeftCollision(rectangle);
-					
+
 				} 
 				if (rightCollision) {
 
@@ -720,35 +778,35 @@ public class Player {
 
 				}
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	public void resolveTopCollision(Rectangle rectangle) {
-		
+
 		setyVelocity(getyVelocity() * -1);
-		
+
 	}
-	
+
 	public void resolveBottomCollision(Rectangle rectangle) {
-		
+
 		setyVelocity(getyVelocity() * -1);
-		
+
 	}
-	
+
 	public void resolveLeftCollision(Rectangle rectangle) {
-		
+
 		setxVelocity(getxVelocity() * -1);
 
 	}
-	
+
 	public void resolveRightCollision(Rectangle rectangle) {
-		
+
 		setxVelocity(getxVelocity() * -1);
-		
+
 	}
-	
+
 	/**
 	 * @return the xVelocity
 	 */
