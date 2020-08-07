@@ -1,7 +1,5 @@
-import java.awt.GraphicsConfigTemplate;
-import java.util.ArrayList;
 
-import javax.crypto.spec.GCMParameterSpec;
+import java.util.ArrayList;
 
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
@@ -9,19 +7,18 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
-
-public class Player {
-
-	private double x;
-	private double y;
-	private double width;
-	private double height;
-	private Color color;
-
-	private double xVelocity;
-	private double yVelocity;
+public class Player extends Entity {
+	
+	private Rectangle drawingRectangle;
+	
+	private double maxVelocity = 15;
 
 	private boolean insidePortal = false;
+	
+	private Portal lastEnteredPortal = null;
+	private Portal lastExitedPortal = null;
+	
+	private boolean jumpReady = false;
 
 	private PortalGame gameObject;
 
@@ -30,36 +27,64 @@ public class Player {
 	private ArrayList<Player> instances = new ArrayList<>(); 
 
 	/**
-	 * Makes a Player with top-left coordinate (x, y) and a specified with and height
-	 * @param x left x coordinate of the Player
-	 * @param y top y coordinate of the Player
-	 * @param width width of the Player
-	 * @param height height of the Player
+	 * Creates a Player with the top-left coordinates given by a Point2D and a width
+	 * and height of 40
+	 * @param point the initial top-left (x, y) point of the player
+	 * @param gameObject the PortalGame object with data about levels and other objects
 	 */
-	public Player(double x, double y, double width, double height, PortalGame gameObject) {
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
-		this.gameObject = gameObject;
+	public Player(Point2D point, PortalGame gameObject) {
+		
+		super(point);
+		setWidth(40);
+		setHeight(40);
+		
+		setDrawingRectangle(new Rectangle(getX(), getY(), getWidth(), getHeight()));
+		getDrawingRectangle().setFill(getColor());
+		
+		setGameObject(gameObject);
+		
+		instances.add(this);
+		
+	}
+	
+	/**
+	 * Makes a Player with a top-left coordinate (x, y) and a specified with and height
+	 * @param x the left x coordinate of the Player
+	 * @param y the top y coordinate of the Player
+	 * @param width the width of the Player
+	 * @param height the height of the Player
+	 * @param gameObject the PortalGame object with data about levels and other objects
+	 */
+	public Player(double x, double y, double width, double height, Color color, PortalGame gameObject) {
+		
+		super(x, y, width, height, color);
+		setDrawingRectangle(new Rectangle(getX(), getY(), getWidth(), getHeight()));
+		getDrawingRectangle().setFill(getColor());
+		
+		setGameObject(gameObject);
 
 		instances.add(this);
 	}
 
 	/**
-	 * Updates the position of the player and portals, and also draws them on 
-	 * the canvas
-	 * @param gc the GraphicsContext of the canvas to draw the player and portals on
+	 * Updates the position of the Player and its Portals, then draws them on 
+	 * the Canvas
+	 * @param gc the GraphicsContext of the canvas to draw the Player and Portals on
 	 */
 	public void update(GraphicsContext gc) {
 
-		//setxVelocity(getxVelocity() * 0.99);
-		setX(getX() + getxVelocity());
-		setY(getY() + getyVelocity());
-		
+		//setxVelocity(getxVelocity() * 0.98); // Friction
+		applyVelocities();
 
 		setyVelocity(getyVelocity() + .1); // Gravity
 
+		capVelocities(maxVelocity);
+		resolvePortalCollisions();
+
+		if (!isInsidePortal()) {
+			checkCollisions(gameObject.getLevelManager().getCurrentLevel().getPlatforms());
+		}
+		
 		draw(gc);
 
 		for (Portal portal : getPortals()) {
@@ -68,15 +93,7 @@ public class Player {
 			portal.draw(gc);
 
 		}
-
-		resolvePortalCollisions();
 		
-
-		// TODO: should only execute the below line if !isInsidePortal()
-		if (!isInsidePortal()) {
-			checkCollisions(gameObject.getPlatformObjects());
-		}
-
 	}
 
 	/**
@@ -127,25 +144,97 @@ public class Player {
 	 * Draws the player's rectangle on the canvas
 	 * @param gc the GraphicsContext of the canvas to draw the player on
 	 */
+	@Override
 	public void draw(GraphicsContext gc) {
 
-
-		// TODO I should modify the drawing method when the player is inside a portal
-		// ex. only draw the rect up to the portal
-
 		gc.save();
+		
+		gc.setFill(getColor());
 
-		for (Player clone : instances) {
-
-
-			gc.setFill(clone.getColor());
-			gc.fillRect(clone.getX(), clone.getY(), clone.getWidth(), clone.getHeight());
-
+		if (!isInsidePortal()) {
+			
+			easyFillRect(gc, getRectangle());
+			
+		} else {
+			
+			setDrawingRectangle(generatePlayerDrawingRectangle(getInstances().get(0)));
+			
+			easyFillRect(gc, getDrawingRectangle());
+			
+			if (getInstances().size() > 1) {
+				
+				easyFillRect(gc, getInstances().get(1).getRectangle());
+				
+			}
 		}
-
+		
 		gc.restore();
+		
+	}
+	
+	/**
+	 * Fills the Rectangle given on the Canvas
+	 * @param gc the GraphicsContext for the Canvas to fill the Rectangle on
+	 * @param rect the Rectangle to fill
+	 */
+	public void easyFillRect(GraphicsContext gc, Rectangle rect) {
+		
+		gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
+		
+	}
+	
+	/**
+	 * @return the drawingRectangle
+	 */
+	public Rectangle getDrawingRectangle() {
+		return drawingRectangle;
+	}
 
+	/**
+	 * @param drawingRectangle the drawingRectangle to set
+	 */
+	public void setDrawingRectangle(Rectangle drawingRectangle) {
+		this.drawingRectangle = drawingRectangle;
+	}
 
+	/**
+	 * Gets a Rectangle which represents only the Player's Rectangle 
+	 * that is outside of a Portal
+	 * @param player
+	 * @return
+	 */
+	public Rectangle generatePlayerDrawingRectangle(Player player) {
+		
+		// TODO drawingRectangle should be a class variable in Player
+		// then the resolvePortalCollisionsMethod should change drawingRectangle
+		// when the Player is in a portal
+		
+		Rectangle newDrawingRectangle;
+		
+		if (getLastEnteredPortal().getOpeningDirection().equals("LEFT")) {
+			
+			newDrawingRectangle = new Rectangle(player.getX(), player.getY(), getLastEnteredPortal().getLeftX() - player.getX(), player.getHeight());
+			
+		} else if (getLastEnteredPortal().getOpeningDirection().equals("RIGHT")) {
+			
+			double playerRightX = player.getX() + player.getWidth();
+			
+			newDrawingRectangle = new Rectangle(getLastEnteredPortal().getRightX(), player.getY(), playerRightX - getLastEnteredPortal().getRightX(), player.getHeight());
+			
+		} else if (getLastEnteredPortal().getOpeningDirection().equals("UP")) {
+			
+			newDrawingRectangle = new Rectangle(player.getX(), player.getY(), player.getWidth(), getLastEnteredPortal().getTopY() - player.getY());
+			
+		} else {
+			
+			newDrawingRectangle = new Rectangle(player.getX(), getLastEnteredPortal().getBottomY(), player.getWidth(), player.getHeight());
+			
+		}
+		
+		newDrawingRectangle.setFill(getColor());
+		
+		return newDrawingRectangle;
+		
 	}
 
 	/**
@@ -163,118 +252,6 @@ public class Player {
 	}
 
 	/**
-	 * @return the x
-	 */
-	public double getX() {
-		return x;
-	}
-
-	/**
-	 * @param x the x to set
-	 */
-	public void setX(double x) {
-		this.x = x;
-	}
-
-	/**
-	 * @return the y
-	 */
-	public double getY() {
-		return y;
-	}
-
-	/**
-	 * @param y the y to set
-	 */
-	public void setY(double y) {
-		this.y = y;
-	}
-
-	/**
-	 * Sets the top left point of the Player
-	 * @param x the new left x coordinate of the Player
-	 * @param y the new top y coordinate of the Player
-	 */
-	public void setLocation(double x, double y) {
-
-		setX(x);
-		setY(y);
-
-	}
-
-	/**
-	 * Gets the center x coordinate of the player
-	 * @return the center x coordinate
-	 */
-	public double getCenterX() {
-
-		return (getX() + getWidth() / 2);
-
-	}
-
-	/**
-	 * Gets the center y coordinate of the player
-	 * @return the center y coordinate
-	 */
-	public double getCenterY() {
-
-		return (getY() + getHeight() / 2);
-
-	}
-
-	/**
-	 * Gets the center (x, y) of the Player as a Point2D object
-	 * @return the center point of the Player
-	 */
-	public Point2D getCenterPoint() {
-
-		return new Point2D(getCenterX(), getCenterY());
-
-	}
-
-	/**
-	 * @return the width
-	 */
-	public double getWidth() {
-		return width;
-	}
-
-	/**
-	 * @param width the width to set
-	 */
-	public void setWidth(double width) {
-		this.width = width;
-	}
-
-	/**
-	 * @return the height
-	 */
-	public double getHeight() {
-		return height;
-	}
-
-	/**
-	 * @param height the height to set
-	 */
-	public void setHeight(double height) {
-		this.height = height;
-	}
-
-	/**
-	 * @return the color
-	 */
-	public Color getColor() {
-		return color;
-	}
-
-	/**
-	 * @param color the color to set
-	 */
-	public void setColor(Color color) {
-		this.color = color;
-	}
-
-	/**
 	 * @return the insidePortal
 	 */
 	public boolean isInsidePortal() {
@@ -288,42 +265,6 @@ public class Player {
 		this.insidePortal = insidePortal;
 	}
 
-
-	/**
-	 * Returns a rectangle representing the containing boundaries of the tile
-	 * @return a Rectangle2D object which contains the dimensions of the  Player
-	 */
-	public Rectangle getProximityBox() {
-		return new Rectangle(getCenterX() - getWidth() * 2, getCenterY() - getHeight() * 2, getWidth() * 4, getHeight() * 4);
-	}
-
-	public Rectangle getRectangle() {
-
-		return new Rectangle(getX(), getY(), getWidth(), getHeight());
-
-	}
-
-	public Rectangle getTopBounds() {
-		return new Rectangle(getX() + getWidth() / 4, getY(), getWidth() / 2, getHeight() / 8);
-	}
-
-	public Rectangle getRightBounds() {
-		// old: return new Rectangle(getX() + (7 * getWidth()) / 8, getY() + getHeight() / 8, getWidth() / 8,
-		//    		(6 * getHeight() / 8));
-		return new Rectangle(getX() + (5 * getWidth()) / 6, getY() + getHeight() / 8, getWidth() / 6,
-				(6 * getHeight() / 8));
-	}
-
-	public Rectangle getLeftBounds() {
-		// old: return new Rectangle(getX(), getY() + getHeight() / 8, getWidth() / 8, (6 * getHeight() / 8));
-		return new Rectangle(getX(), getY() + getHeight() / 8, getWidth() / 6, (6 * getHeight() / 8));
-	}
-
-	public Rectangle getBottomBounds() {
-		return new Rectangle(getX() + getWidth() / 4, getY() + (7 * getHeight() / 8), getWidth() / 2,
-				(getHeight() / 8) + 0);
-	}
-	
 	/**
 	 * Handles collisions between the Player and any of the placed Portals.
 	 * If the Player is inside of a Portal, a "clone" is placed at the 
@@ -336,9 +277,6 @@ public class Player {
 
 		if (getPortals().size() == 2 && getPortals().get(0).isPlacedOnWall() && getPortals().get(1).isPlacedOnWall()) {
 
-			Portal enterPortal;
-			Portal exitPortal;
-
 			Portal portal1 = portals.get(0); 
 			Portal portal2 = portals.get(1);
 
@@ -347,32 +285,32 @@ public class Player {
 
 			boolean insidePortal1 = instances.get(0).getRectangle().intersects(portal1Bounds);
 			boolean insidePortal2 = instances.get(0).getRectangle().intersects(portal2Bounds);
-
-			if (insidePortal1) {
-
-				enterPortal = portal1;
-				exitPortal = portal2;
-
-			} else {
-
-				enterPortal = portal2;
-				exitPortal = portal1;
-
-			}
-
+			
 			if (insidePortal1 || insidePortal2) {
-
+				
+				if (insidePortal1) {
+					
+					setLastEnteredPortal(portal1);
+					setLastExitedPortal(portal2);
+					
+				} else {
+					
+					setLastEnteredPortal(portal2);
+					setLastExitedPortal(portal1);
+					
+				}
+				
 				setInsidePortal(true);
 
-				bounceInsidePortal(enterPortal);
-
-				placeClone(enterPortal, exitPortal);
-
-
+				bounceInsidePortal(getLastEnteredPortal());
+				
+				placeClone(getLastEnteredPortal(), getLastExitedPortal());
+				
+				
 			} else {
 
-				swapCloneForPlayer(enterPortal, exitPortal);
-
+				swapCloneForPlayer(getLastEnteredPortal(), getLastExitedPortal());
+				
 			}
 
 		}
@@ -389,18 +327,18 @@ public class Player {
 
 			Player clone = getInstances().get(1);
 
+			
+			getInstances().get(0).translateVelocities(enterPortal, exitPortal);
+			
 			getInstances().get(0).setLocation(clone.getX(), clone.getY());
 
-			getInstances().get(0).adjustVelocities(enterPortal, exitPortal);
-
 			getInstances().remove(1);
-
+			
 		}
 
 		setInsidePortal(false);
 
 	}
-
 
 	/**
 	 * Checks if the Player should be able to enter a Portal. The player should be able to enter
@@ -435,7 +373,6 @@ public class Player {
 		return shouldEnterPortal;
 
 	}
-
 
 	/**
 	 * Makes the Player bounce off the sides of the Portal
@@ -497,7 +434,7 @@ public class Player {
 
 		if (getInstances().size() < 2) {
 
-			getInstances().add(new Player(-100, -100, getWidth(), getHeight(), gameObject));
+			getInstances().add(new Player(-100, -100, getWidth(), getHeight(), getColor(), gameObject));
 			getInstances().get(1).setColor(Color.BLUE);
 
 		}
@@ -600,13 +537,13 @@ public class Player {
 	}
 
 	/**
-	 * Adjusts the x and y velocities of the Player. The adjustment made
+	 * Translates the x and y velocities of the Player. The translation made
 	 * depends on the opening directions of the Portals through which the 
 	 * Player enters and exits.
 	 * @param enterPortal the Portal which the Player entered
 	 * @param exitPortal the Portal which the Player exited
 	 */
-	public void adjustVelocities(Portal enterPortal, Portal exitPortal) {
+	public void translateVelocities(Portal enterPortal, Portal exitPortal) {
 
 		String enterPortalDirection = enterPortal.getOpeningDirection();
 		String exitPortalDirection = exitPortal.getOpeningDirection();
@@ -657,11 +594,8 @@ public class Player {
 
 				} else {
 
-					System.out.println(enterPortalDirection);
-
 					if (enterPortalDirection.equals("LEFT") || enterPortalDirection.equals("RIGHT")) {
 
-						System.out.println("Here");
 						setxVelocity(oldYVelocity);
 						setyVelocity(oldXVelocity * -1);
 
@@ -727,112 +661,156 @@ public class Player {
 	}
 
 	/**
-	 * Checks for collisions(intersections) between the Player and a
-	 * given ArrayList of Rectangle objects, which represent platforms
-	 * or boundaries in the game. If a collision is occurring, this method 
-	 * determines what type of collision it is by determining what 
-	 * part of the player is colliding with another object, and then calls 
-	 * an appropriate method to resolve the collision.
-	 * @param rectangles an ArrayList of Rectangles representing game objects
+	 * @return the lastEnteredPortal
 	 */
-	public void checkCollisions(ArrayList<Rectangle> rectangles) {
-
-		boolean topCollision;
-		boolean bottomCollision;
-		boolean leftCollision;
-		boolean rightCollision;
-
-		for (Rectangle rectangle : rectangles) {
-
-			// If the rectangle intersects the player somewhere
-			if (getProximityBox().intersects(rectangle.getLayoutBounds())) {
-
-				Bounds otherRectangle = rectangle.getLayoutBounds();
-
-				// Determine what kind of collision is occuring
-				bottomCollision = getBottomBounds().intersects(otherRectangle);
-				topCollision = getTopBounds().intersects(otherRectangle);
-				leftCollision = getLeftBounds().intersects(otherRectangle);
-				rightCollision = getRightBounds().intersects(otherRectangle);
-
-
-				// Respond to the collision
-				if (bottomCollision) {
-
-					resolveBottomCollision(rectangle);
-
-				}
-				if (topCollision) {
-
-					resolveTopCollision(rectangle);
-
-				}
-				if (leftCollision) {
-
-					resolveLeftCollision(rectangle);
-
-				} 
-				if (rightCollision) {
-
-					resolveRightCollision(rectangle);
-
-				}
-			}
-
-		}
-
+	public Portal getLastEnteredPortal() {
+		return lastEnteredPortal;
 	}
 
+	/**
+	 * @param lastEnteredPortal the lastEnteredPortal to set
+	 */
+	public void setLastEnteredPortal(Portal lastEnteredPortal) {
+		this.lastEnteredPortal = lastEnteredPortal;
+	}
+
+	/**
+	 * @return the lastExitedPortal
+	 */
+	public Portal getLastExitedPortal() {
+		return lastExitedPortal;
+	}
+
+	/**
+	 * @param lastExitedPortal the lastExitedPortal to set
+	 */
+	public void setLastExitedPortal(Portal lastExitedPortal) {
+		this.lastExitedPortal = lastExitedPortal;
+	}
+
+	/**
+	 * Checks that the magnitude of the Player's velocities
+	 * are less than the given maximumMagnitude. If a velocity
+	 * is greater than this threshold, it will be set to equal
+	 * the value of the threshold.
+	 */
+	public void capVelocities(double maxMagnitude) {
+		
+		if (Math.abs(getxVelocity()) > maxMagnitude) {
+			
+			if (getxVelocity() > 0) {
+				
+				setxVelocity(maxMagnitude);
+				
+			} else {
+				
+				setxVelocity(-maxMagnitude);
+				
+			}
+			
+		}
+		
+		if (Math.abs(getyVelocity()) > maxMagnitude) {
+			
+			if (getyVelocity() > 0) {
+				
+				setyVelocity(maxMagnitude);
+				
+			} else {
+				
+				setyVelocity(-maxMagnitude);
+				
+			}
+			
+		}
+		
+	}
+	
+	@Override
 	public void resolveTopCollision(Rectangle rectangle) {
 
 		setyVelocity(getyVelocity() * -1);
 
 	}
 
+	@Override
 	public void resolveBottomCollision(Rectangle rectangle) {
 
-		setyVelocity(getyVelocity() * -1);
+		setY(rectangle.getY() - getHeight());
+		setyVelocity(0);
+		setxVelocity(getxVelocity() * .95);
+		setJumpReady(true);
 
 	}
-
+	
+	@Override
 	public void resolveLeftCollision(Rectangle rectangle) {
 
 		setxVelocity(getxVelocity() * -1);
 
 	}
 
+	@Override
 	public void resolveRightCollision(Rectangle rectangle) {
 
 		setxVelocity(getxVelocity() * -1);
 
 	}
 
+	
 	/**
-	 * @return the xVelocity
+	 * @return the jumpReady
 	 */
-	public double getxVelocity() {
-		return xVelocity;
+	public boolean isJumpReady() {
+		return jumpReady;
 	}
 
 	/**
-	 * @param xVelocity the xVelocity to set
+	 * @param jumpReady the jumpReady to set
 	 */
-	public void setxVelocity(double xVelocity) {
-		this.xVelocity = xVelocity;
+	public void setJumpReady(boolean jumpReady) {
+		this.jumpReady = jumpReady;
 	}
 
 	/**
-	 * @return the yVelocity
+	 * Clears many of the objects associated with the Player, such as Portals
+	 * and instances, and then sets the location of the Player based on the
+	 * Point2D given. This method is useful for when the user is starting
+	 * or restarting a level.
+	 * @param startPoint a Point2D containing the new location for the Player
 	 */
-	public double getyVelocity() {
-		return yVelocity;
+	public void reset(Point2D startPoint) {
+		
+		stopVelocities();
+		getPortals().clear();
+		
+		if (getInstances().size() > 1) {
+			
+			getInstances().remove(1);
+			
+		}
+		
+		setInsidePortal(false);
+		
+		setLocation(startPoint);
+		
+		
 	}
 
 	/**
-	 * @param yVelocity the yVelocity to set
+	 * Gets the PortalGame instance held by the Player
+	 * @return the PortalGame instance
 	 */
-	public void setyVelocity(double yVelocity) {
-		this.yVelocity = yVelocity;
+	public PortalGame getGameObject() {
+		return gameObject;
 	}
 
+	/**
+	 * Sets the PortalGame instance of the Player
+	 * @param gameObject new PortalGame instance
+	 */
+	public void setGameObject(PortalGame gameObject) {
+		this.gameObject = gameObject;
+	}
+	
 }

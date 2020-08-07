@@ -1,3 +1,4 @@
+
 import java.util.ArrayList;
 
 import javafx.scene.canvas.GraphicsContext;
@@ -7,53 +8,56 @@ import javafx.scene.shape.Rectangle;
 
 public class Portal {
 
-	String portalType = "A"; // Types are A and B
-	Color color;
-	boolean placedOnWall = false;
-	double centerX;
-	double centerY;
-	double width = 100;
-	double height = 4;
-	double airborneRadius = 20;
+	private String portalType = "A"; // Types are A and B
+	private Color color;
+	private boolean placedOnWall = false;
+	private double centerX;
+	private double centerY;
+	private double width = 100;
+	private double height = 4;
+	private double airborneRadius = 20;
 
-	double velocity = 10; 
-	double direction;
+	private double velocity = 10; 
+	private double direction;
 
-	String openingDirection = null;
+	private String openingDirection = null;
 
-	PortalGame gameObject; 
+	private PortalGame gameObject; 
 
-	double horizontalPortalWidth = 150;
-	double verticalPortalWidth = 10;
-	double horizontalPortalHeight = verticalPortalWidth;
-	double verticalPortalHeight = horizontalPortalWidth;
+	private double horizontalPortalWidth = 120;
+	private double verticalPortalWidth = 10;
+	private double horizontalPortalHeight = verticalPortalWidth;
+	private double verticalPortalHeight = horizontalPortalWidth;
 
 
 	public Portal() {}
 
 	/**
-	 * @param portalType
-	 * @param x
-	 * @param y
-	 * @param width
-	 * @param height
-	 * @param velocity
-	 * @param direction direction of the velocity(in degrees)
+	 * Creates a portal of the given portal type centered at the given point (centerX, centerY) 
+	 * and a given width, height, velocity, and velocity direction. 
+	 * @param portalType used to determine the Portal's color and differentiate between the two
+	 * portals the Player can use
+	 * @param centerX the center x coordinate of the Portal
+	 * @param centerY the center y coordinate of the Portal
+	 * @param width the width of the Portal
+	 * @param height the height of the Portal
+	 * @param velocity the magnitude of the Portal's velocity
+	 * @param direction the direction of the Portal's velocity(in degrees)
 	 */
 	public Portal(String portalType, double centerX, double centerY, double width, double height, double velocity,
 			double direction, PortalGame gameObject) {
 
-		this.portalType = portalType;
-		this.centerX = centerX;
-		this.centerY = centerY;
-		this.width = width;
-		this.height = height;
-		this.velocity = velocity;
-		this.direction = direction;
+		setPortalType(portalType);
+		setCenterX(centerX);
+		setCenterY(centerY);
+		setWidth(width);
+		setHeight(height);
+		setVelocity(velocity);
+		setDirection(direction);
 
 		this.gameObject = gameObject;
 
-		if (portalType.equals("A")) {
+		if (getPortalType().equals("A")) {
 
 			setColor(Color.ORANGE);
 
@@ -66,22 +70,23 @@ public class Portal {
 	}
 
 	/**
-	 * Creates a Portal with a default velocity, width, and height
-	 * @param portalType
-	 * @param x
-	 * @param y
-	 * @param direction
+	 * Creates a Portal centered on (centerX, centerY) with a default velocity, width, and height
+	 * @param portalType used to determine the Portal's color and differentiate between the two
+	 * portals the Player can use
+	 * @param centerX the center x coordinate of the Portal
+	 * @param centerY the center y coordinate of the Portal
+	 * @param direction the direction of the Portal's velocity
 	 */
-	public Portal(String portalType, double x, double y, double direction, PortalGame gameObject) {
+	public Portal(String portalType, double centerX, double centerY, double direction, PortalGame gameObject) {
 
-		this.portalType = portalType;
-		this.centerX = x;
-		this.centerY = y;
-		this.direction = direction;
+		setPortalType(portalType);
+		setCenterX(centerX);
+		setCenterY(centerY);
+		setDirection(direction);
 
 		this.gameObject = gameObject;
 
-		if (portalType.equals("A")) {
+		if (getPortalType().equals("A")) {
 
 			setColor(Color.ORANGE);
 
@@ -93,19 +98,28 @@ public class Portal {
 
 	}
 
+	/**
+	 * Updates the Portal's position if it is airborne, and checks if the Portal
+	 * is colliding with any of the platforms in the current level.
+	 */
 	public void update() {
 
-		if (velocity > 0) {
+		if (getVelocity() > 0) {
 
 			setCenterX(getCenterX() + (Math.cos(Math.toRadians(getDirection()))) * getVelocity() * -1);
 			setCenterY(getCenterY() + (Math.sin(Math.toRadians(getDirection()))) * getVelocity() * -1);
 
-			checkCollisions(gameObject.getPlatformObjects());
+			checkCollisions(gameObject.getLevelManager().getCurrentLevel().getPlatforms());
 
 		}
 
 	}
 
+	/**
+	 * Draws the Portal. If the Portal is airborne, a Circle is drawn, and if
+	 * the Portal is stationary a Rectangle is drawn. 
+	 * @param gc the GraphicsContext of the Canvas to draw the Portal on
+	 */
 	public void draw(GraphicsContext gc) {
 
 		gc.setFill(getColor());
@@ -114,7 +128,7 @@ public class Portal {
 
 			gc.fillOval(getCenterX() - getAirborneRadius(), getCenterY() - getAirborneRadius(), getAirborneRadius() * 2, getAirborneRadius() * 2);
 
-		} else {
+		} else if (isPlacedOnWall()) {
 			gc.fillRect(getCenterX() - getWidth() / 2, getCenterY() - getHeight() / 2, getWidth(), getHeight());
 		}
 
@@ -141,10 +155,14 @@ public class Portal {
 
 	}
 
+	/**
+	 * Adjusts the position, dimensions, and velocity of the Portal
+	 * so that it will be stationary on the wall it collided with
+	 * @param rectangle the Rectangle of the wall to stick the Portal on
+	 */
 	public void stickToWall(Rectangle rectangle) {
 
 		setVelocity(0);
-		
 
 		double leftVerticalX = rectangle.getX();
 		double rightVerticalX = rectangle.getX() + rectangle.getWidth();
@@ -198,7 +216,40 @@ public class Portal {
 
 		adjustSize();
 		
-		setPlacedOnWall(true);
+		boolean portalFitsOnPlatform = true;
+		boolean isHorizontalPortal = getOpeningDirection().equals("UP") || getOpeningDirection().equals("DOWN");
+		
+		// Check if the Portal fits on the platform
+		if (isHorizontalPortal) {
+			
+			if (getLeftX() < rectangle.getX() || getRightX() > rectangle.getX() + rectangle.getWidth()) {
+				
+				portalFitsOnPlatform = false;
+				
+			}
+			
+		} else {
+			
+			if (getTopY() < rectangle.getY() || getBottomY() > rectangle.getY() + rectangle.getHeight()) {
+				
+				portalFitsOnPlatform = false;
+				
+			}
+			
+			
+		}
+		
+		if (portalFitsOnPlatform) {
+			
+			setPlacedOnWall(true);
+			
+		} else {
+			
+			setPlacedOnWall(false);
+			
+		}
+		
+		
 
 	}
 
@@ -225,47 +276,53 @@ public class Portal {
 
 	public Rectangle getRectangle() {
 
-		return new Rectangle(getCenterX() - getWidth() / 2, getCenterY() - getHeight() / 2, getWidth(), getHeight());
+		return new Rectangle(getLeftX(), getTopY(), getWidth(), getHeight());
 
 	}
 
 	/**
-	 * @return the portalType
+	 * Gets the type of the Portal(A or B)
+	 * @return the type of the Portal
 	 */
 	public String getPortalType() {
 		return portalType;
 	}
 
 	/**
-	 * @param portalType the portalType to set
+	 * Sets the type of the Portal(A or B)
+	 * @param portalType the new type
 	 */
 	public void setPortalType(String portalType) {
 		this.portalType = portalType;
 	}
 
 	/**
-	 * @return the color
+	 * Gets the Color of the Portal
+	 * @return the color of the Portal
 	 */
 	public Color getColor() {
 		return color;
 	}
 
 	/**
-	 * @param color the color to set
+	 * Sets a the Color of the Portal
+	 * @param color the new color
 	 */
 	public void setColor(Color color) {
 		this.color = color;
 	}
 
 	/**
-	 * @return the x
+	 * Gets the center x coordinate of the Portal
+	 * @return the center x coordinate
 	 */
 	public double getCenterX() {
 		return centerX;
 	}
 
 	/**
-	 * @param x the x to set
+	 * Sets the center x coordinate of the Portal
+	 * @param x the new center x coordinate
 	 */
 	public void setCenterX(double x) {
 		this.centerX = x;
@@ -292,14 +349,16 @@ public class Portal {
 	}
 
 	/**
-	 * @return the y
+	 * Gets the center y coordinate of the Portal
+	 * @return the center y coordinate of the Portal
 	 */
 	public double getCenterY() {
 		return centerY;
 	}
 
 	/**
-	 * @param y the y to set
+	 * Sets the center y coordinate of the Portal
+	 * @param y the center y coordinate
 	 */
 	public void setCenterY(double y) {
 		this.centerY = y;
@@ -326,28 +385,31 @@ public class Portal {
 	}
 
 	/**
-	 * @return the width
+	 * Gets the width of the Portal
+	 * @return the width of the Portal
 	 */
 	public double getWidth() {
 		return width;
 	}
 
 	/**
-	 * @param width the width to set
+	 * Sets the width of the Portal
+	 * @param width the new width
 	 */
 	public void setWidth(double width) {
 		this.width = width;
 	}
 
-	/**
-	 * @return the height
+	/** Gets the height of the Portal
+	 * @return the height of the Portal
 	 */
 	public double getHeight() {
 		return height;
 	}
 
 	/**
-	 * @param height the height to set
+	 * Sets the height of the Portal
+	 * @param height the new height
 	 */
 	public void setHeight(double height) {
 		this.height = height;
@@ -382,6 +444,7 @@ public class Portal {
 	}
 
 	/**
+	 * Gets the direction of the Portal's velocity
 	 * @return the direction
 	 */
 	public double getDirection() {
@@ -394,7 +457,6 @@ public class Portal {
 	public void setDirection(double direction) {
 		this.direction = direction;
 	}
-
 
 	/**
 	 * @return the placedOnWall
@@ -410,15 +472,17 @@ public class Portal {
 		this.placedOnWall = placedOnWall;
 	}
 
-	/**
-	 * @return the openingDirection
+	/** 
+	 * Gets the direction that the Portal opens to(where the Player exits)
+	 * @return the opening direction
 	 */
 	public String getOpeningDirection() {
 		return openingDirection;
 	}
 
 	/**
-	 * @param openingDirection the openingDirection to set
+	 * Sets the direction of the Portal's opening
+	 * @param openingDirection the new opening direction
 	 */
 	public void setOpeningDirection(String openingDirection) {
 		this.openingDirection = openingDirection;

@@ -1,5 +1,3 @@
-import java.util.ArrayList;
-import java.util.Collections;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -13,12 +11,12 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 /*
  * IDEAS/TODO
- * - Left/Right click should determine what type of portal is fired
+ * 
+ * - Private variables
  * - Making the left/right hitboxes bigger in the Player getBounds methods seemed to help
  * 		the computer detect more collisions. I think I have more unused space to expand
  * 		to(where boxes don't overlap) - maybe make them even bigger
@@ -30,24 +28,23 @@ import javafx.stage.Stage;
 public class PortalGame extends Application {
 	
 	// Dimensions
-	int WIDTH = 1000;
-	int HEIGHT = 680;
+	private int WIDTH = 1000;
+	private int HEIGHT = 680;
 
 	// Useful global variables
-	Group root;
-	Canvas canvas;
-	Scene gameScene;
-	double cameraZoom = 1;
+	private Group root;
+	private Stage stage;
+	private Canvas canvas;
+	private Scene gameScene;
 
-	AnimationTimer animator;
+	private AnimationTimer animator;
 
-	KeyboardHandler keyboardHandler;
-	MouseHandler mouseHandler;
+	private GraphicsContext gc;
 	
-	GraphicsContext gc;
+	private Player player;
 	
-	Player player;
-	ArrayList<Rectangle> platformObjects = new ArrayList<>();
+	private LevelManager levelManager;
+	private MenuManager menuManager;
 	
 	public static void main(String[] args) {
 		launch(args);
@@ -55,96 +52,126 @@ public class PortalGame extends Application {
 
 	public void init() throws Exception {
 		
-		player = new Player(WIDTH / 2, HEIGHT / 2, 40, 40, this);
-		player.setColor(Color.AQUA);
+		player = new Player(WIDTH / 2, HEIGHT / 2, 40, 40, Color.AQUA, this);
 		player.setxVelocity(0);
 		player.setyVelocity(0);
-		
-	}
-
-	public void start(Stage gameStage) throws Exception {
-		
-		prepareWindow(gameStage);	
-		
-		Rectangle floor = new Rectangle(0, HEIGHT - 50, WIDTH, 50);
-		Rectangle leftWall = new Rectangle(0, 0, 50, HEIGHT);
-		Rectangle rightWall = new Rectangle(WIDTH - 50, 0, 50, HEIGHT);
-		Rectangle middlePlatform = new Rectangle(WIDTH / 2 - 150, 500, 300, 20);
-		Rectangle ceiling = new Rectangle(0, 0, WIDTH, 50);
-		
-		Collections.addAll(platformObjects, floor, leftWall, rightWall, middlePlatform, ceiling);
-		root.getChildren().addAll(platformObjects);
-		
 		
 		animator = new AnimationTimer() {
 			@Override
 			public void handle(long arg0) {
 				
-				// NOTE: Game loop
-
-				gc.clearRect(0, 0, WIDTH, HEIGHT); // clear the screen
-				
-				// draw the objects
-				gc.setFill(Color.BLACK);
-				
-				player.update(gc);
-
-				if (player.getPortals().size() > 1) {
-				}
+				tickGame();
 				
 			}
-		};
+		}; // animator is started by MenuManager
 		
-		animator.start();
-
-		gameStage.setScene(gameScene); // stuff won't show up without this
-		gameStage.show();
+		//animator.start();
+		
+		levelManager = new LevelManager(this);
+		menuManager = new MenuManager(this);
+		
 	}
 
+	public void start(Stage stage) throws Exception {
+		
+		setStage(stage);
+		prepareWindow();	
+		
+		menuManager.showMainMenu();
+		
+		
+	}
 	
 	/**
-	 * Calculates the angle between two bodies and gives it in radians
-	 * @param body1 one of the bodies to calculate the angle between
-	 * @param body2 one of the bodies to calculate the angle between
-	 * @return the angle between the two bodies in radians
+	 * Updates objects involved in the game
 	 */
-	public double calculateAngleBetween(Point2D point1, Point2D point2) {
+	public void tickGame() {
 		
-		double angle; 
+		// NOTE: Game loop
 		
-		double xDiff = point1.getX() - point2.getX();
-		double yDiff = point1.getY() - point2.getY();
+		gc.clearRect(0, 0, WIDTH, HEIGHT); // clear the screen
+
+		// draw the objects
+		player.update(gc);
 		
-		angle = Math.atan2(xDiff, yDiff);
+		levelManager.update(gc);
 		
-		// Translate the angle
-		angle -= Math.PI / 2;
-		angle *= -1;
-		
-		return angle;
 		
 	}
-	
 
+	/**
+	 * Gets the width of the window
+	 * @return the width of the window
+	 */
 	public int getWidth() {
 		return WIDTH;
 	}
 
+	/**
+	 * Gets the height of the window
+	 * @return the height
+	 */
 	public int getHeight() {
 		return HEIGHT;
 	}
+
 	
 	/**
-	 * Gets the ArrayList of Rectangle objects which serve as platforms in the game 
-	 * @return the ArrayList of platform Rectangles
+	 * Gets the Stage
+	 * @return the stage
 	 */
-	public ArrayList<Rectangle> getPlatformObjects() {
-		return platformObjects;
+	public Stage getStage() {
+		return stage;
 	}
 
-	public void prepareWindow(Stage theStage) {
+	/**
+	 * Sets the Stage
+	 * @param stage the new stage
+	 */
+	public void setStage(Stage stage) {
+		this.stage = stage;
+	}
+
+	/**
+	 * Gets the Scene used when the player is playing the game
+	 * @return the gameScene
+	 */
+	public Scene getGameScene() {
+		return gameScene;
+	}
+
+	/**
+	 * Sets the gameScene
+	 * @param gameScene the gameScene to set
+	 */
+	public void setGameScene(Scene gameScene) {
+		this.gameScene = gameScene;
+	}
+
+	/**
+	 * Gets the AnimationTimer which animates the game
+	 * @return the AnimationTimer of the game
+	 */
+	public AnimationTimer getAnimator() {
+		return animator;
+	}
+
+	/**
+	 * Sets the AnimationTimer for the gameScene
+	 * @param animator the new AnimationTimer
+	 */
+	public void setAnimator(AnimationTimer animator) {
+		this.animator = animator;
+	}
+
+	/**
+	 * Sets window variables such as the Stage and root Group and adds input
+	 * detection
+	 */
+	public void prepareWindow() {
 		
-		theStage.setTitle("PortalGame");
+		getStage().setTitle("PortalGame");
+		getStage().setResizable(false);
 
 		root = new Group();
 
@@ -152,21 +179,61 @@ public class PortalGame extends Application {
 
 		addKeyboardHandling(gameScene);
 
-		addMouseHandling(gameScene, new MouseHandler());
+		addMouseHandling(gameScene);
 		
-		theStage.setWidth(WIDTH + 17); // adding these 2 lines fixes drawing errors
-		theStage.setHeight(HEIGHT + 47);
+		getStage().setWidth(WIDTH + 6);
+		getStage().setHeight(HEIGHT + 35);
 
-		canvas = new Canvas(theStage.getWidth(), theStage.getHeight());
-		// also, adding numbers moves the canvas down further on the screen or further
-		// to the right
+		canvas = new Canvas(getStage().getWidth(), getStage().getHeight());
 
 		root.getChildren().add(canvas);
 
 		gc = canvas.getGraphicsContext2D();
 		
+		getStage().show();
+		
 	}
 	
+	/**
+	 * Gets the LevelManager
+	 * @return the LevelManager
+	 */
+	public LevelManager getLevelManager() {
+		return levelManager;
+	}
+
+	/**
+	 * Sets the LevelManager
+	 * @param levelManager the new LevelManager
+	 */
+	public void setLevelManager(LevelManager levelManager) {
+		this.levelManager = levelManager;
+	}
+
+	/**
+	 * Gets the MenuManager
+	 * @return the MenuManager
+	 */
+	public MenuManager getMenuManager() {
+		return menuManager;
+	}
+
+	/**
+	 * Sets the MenuManager
+	 * @param menuManager the new MenuManager
+	 */
+	public void setMenuManager(MenuManager menuManager) {
+		this.menuManager = menuManager;
+	}
+
+	/**
+	 * Gets the Player
+	 * @return the Player
+	 */
+	public Player getPlayer() {
+		return player;
+	}
+
 	/**
 	 * Adds keyboard event(ex. key press) handling to a scene
 	 * @param scene scene to add keyboard event handling to
@@ -178,13 +245,18 @@ public class PortalGame extends Application {
 		scene.setOnKeyReleased(keyboardHandler);
 	}
 	
-	public void addMouseHandling(Scene scene, MouseHandler handlerObject) {
+	/**
+	 * Adds mouse event handling to the given Scene
+	 * @param scene the Scene to add mouse event handling to
+	 */
+	public void addMouseHandling(Scene scene) {
 		// adds mouseEvent handling to the given scene
-		scene.setOnMouseMoved(handlerObject);
-		scene.setOnMouseDragged(handlerObject);
-		scene.setOnMousePressed(handlerObject);
-		scene.setOnMouseClicked(handlerObject);
-		scene.setOnMouseReleased(handlerObject);
+		MouseHandler mouseHandler = new MouseHandler();
+		scene.setOnMouseMoved(mouseHandler);
+		scene.setOnMouseDragged(mouseHandler);
+		scene.setOnMousePressed(mouseHandler);
+		scene.setOnMouseClicked(mouseHandler);
+		scene.setOnMouseReleased(mouseHandler);
 	}
 	
 	/**
@@ -197,10 +269,17 @@ public class PortalGame extends Application {
 
 		public void handle(KeyEvent arg0) {
 			if (arg0.getEventType() == KeyEvent.KEY_PRESSED) {
+				
 				String code = arg0.getCode().toString().toUpperCase();
+				
 				if (code.equals("W")) {
 					
-					player.setyVelocity(player.getyVelocity() - 2);
+					if (getPlayer().isJumpReady() && !getPlayer().isInsidePortal()) {
+						
+						getPlayer().setyVelocity(-4);
+						getPlayer().setJumpReady(false);
+					}
+					
 					
 				} else if (code.equals("A")) {
 					
@@ -210,20 +289,31 @@ public class PortalGame extends Application {
 					
 					player.setxVelocity(player.getxVelocity() + 2);
 					
-				} else if (code.equals("S")) {
+				} else if (code.equals("DIGIT1")) {
 					
-					player.setyVelocity(player.getyVelocity() + 2);
-					
+					getLevelManager().switchLevel(0);
 				}
 				
+				if (code.equals("F")) {
+					
+					System.out.println(player);
+					
+				}
 				if (code.equals("P")) {
 					
-					animator.stop();
+					menuManager.showMainMenu();
+					//animator.stop();
 					
 				}
 				if (code.equals("R")) {
 					
 					animator.start();
+					
+				} 
+				if (code.equals("SPACE")) {
+					
+					getLevelManager().getCurrentLevel().restartLevel();
+					
 					
 				}
 				
@@ -232,10 +322,10 @@ public class PortalGame extends Application {
 
 	}
 	
-
-	
+	/**
+	 * A class for handling mouse input
+	 */
 	class MouseHandler implements EventHandler<MouseEvent> {
-		// A class for handling mouse input
 
 		MouseHandler() {
 		}
@@ -249,25 +339,49 @@ public class PortalGame extends Application {
 				double angle = Math.toDegrees(calculateAngleBetween(player.getCenterPoint(), clickPoint));
 				
 				if (arg0.getButton() == MouseButton.PRIMARY) {
-					
+
 					// If the left click button is pressed, launch a portal
 					String clickType = "LEFT";
-					
-					
-					player.launchPortal(clickType, angle);
-					
+
+					if (!player.isInsidePortal()) {
+						player.launchPortal(clickType, angle);
+					}
 				}
 				if (arg0.getButton() == MouseButton.SECONDARY) {
-					
+
 					// If the right click button is pressed, launch a portal
 					String clickType = "RIGHT";
-					
-					player.launchPortal(clickType, angle);
-					
+
+					if (!player.isInsidePortal()) {
+						player.launchPortal(clickType, angle);
+					}
 				}
 			}
 		}
-
+		
+		/**
+		 * Calculates the angle between two bodies and gives it in radians
+		 * @param body1 one of the bodies to calculate the angle between
+		 * @param body2 one of the bodies to calculate the angle between
+		 * @return the angle between the two bodies in radians
+		 */
+		public double calculateAngleBetween(Point2D point1, Point2D point2) {
+			
+			double angle; 
+			
+			double xDiff = point1.getX() - point2.getX();
+			double yDiff = point1.getY() - point2.getY();
+			
+			angle = Math.atan2(xDiff, yDiff);
+			
+			// Translate the angle
+			angle -= Math.PI / 2;
+			angle *= -1;
+			
+			return angle;
+			
+		}
+		
 	}
 
 }
