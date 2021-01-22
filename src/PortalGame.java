@@ -28,8 +28,8 @@ import javafx.stage.Stage;
 public class PortalGame extends Application {
 	
 	// Dimensions
-	private int WIDTH = 1000;
-	private int HEIGHT = 680;
+	private int WIDTH = 700;
+	private int HEIGHT = 600;
 
 	// Useful global variables
 	private Group root;
