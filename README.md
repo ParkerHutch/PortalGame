@@ -11,3 +11,5 @@ A level-based game where the player solves puzzles, trying to get to an objectiv
 |   W           | Jump                  |
 |   A           | Move left             |
 |   D           | Move right            |
+|   P           | Return to main menu   |
+|   Spacebar    | Restart level         |
