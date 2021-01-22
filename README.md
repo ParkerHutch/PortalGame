@@ -2,8 +2,8 @@
 A 2D game where the player solves puzzles using wormhole-like portals.
 
 ---
-![](img/level2gif-300width.gif) 
-![](img/level5gif-300width.gif)
+![](img/level2gif-400width.gif) 
+![](img/level2gif-400width.gif)
 
 A level-based game where the player solves puzzles, trying to get to an objective in the level(like a door). The player is given a Portal-making tool to help them solve the puzzles and get to the end of the level. The player is able to enter through one portal and exit the other. 
 
