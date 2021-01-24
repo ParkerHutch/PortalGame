@@ -1,4 +1,4 @@
-# portals
+# portals :large_blue_circle::orange_circle:
 A 2D game where the player solves puzzles using wormhole-like portals.
 
 ---
