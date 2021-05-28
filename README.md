@@ -4,7 +4,7 @@ A 2D game where the player solves puzzles using wormhole-like portals.
 ---
 ![](img/level2-demo-small.gif) ![](img/level3-demo-small.gif)
 
-A level-based game where the player solves puzzles, trying to get to an objective in the level(like a door). The player is given a Portal-making tool to help them solve the puzzles and get to the end of the level. The player is able to enter through one portal and exit the other. 
+A level-based game where the player solves puzzles to get to the level's green door. The player uses portals which grant them wormhole-like travel to avoid obstacles and maneuver their way to the objective. When the player enters through one portal, they exit out of the other.
 
 # Controls
 | Input         | Effect                |
